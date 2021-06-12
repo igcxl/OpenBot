@@ -84,6 +84,7 @@
   #define PIN_PWM_L2_REAR 12
   #define PIN_PWM_R1_REAR 44
   #define PIN_PWM_R2_REAR 46
+
   #define PIN_SPEED_L 2//左轮测速
   #define PIN_SPEED_R 3//右轮测速
   #define PIN_VIN A8//测电压
@@ -187,7 +188,7 @@ unsigned int vin_counter = 0;
 unsigned int vin_array[VIN_ARR_SZ]={0};
 
 //Speed sensor
-const unsigned int DISK_HOLES = 1560;
+const unsigned int DISK_HOLES = 390;
 volatile int counter_left = 0;
 volatile int counter_right = 0;
 
