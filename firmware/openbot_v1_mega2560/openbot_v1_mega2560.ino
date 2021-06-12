@@ -25,7 +25,8 @@
 // PIN_TRIGGER                                  Arduino pin tied to trigger pin on ultrasonic sensor.
 // PIN_ECHO                                     Arduino pin tied to echo pin on ultrasonic sensor.
 // PIN_LED_LB, PIN_LED_RB                       Toggle left and right rear LEDs (indicator signals) 
-
+//不在使用newping库
+//正对SFM车进行修改
 //------------------------------------------------------//
 // DEFINITIONS
 //------------------------------------------------------//
@@ -58,7 +59,7 @@
 #define USE_MEDIAN 0
 
 // Enable/Disable OLED (1,0)
-#define HAS_OLED 1
+#define HAS_OLED 0
 
 // Enable/Disable no phone mode (1,0)
 // In no phone mode:
@@ -78,8 +79,13 @@
   #define PIN_PWM_L2 6
   #define PIN_PWM_R1 8
   #define PIN_PWM_R2 7
-  #define PIN_SPEED_L 2//测速
-  #define PIN_SPEED_R 3//测速
+  //独立电机后轮
+  #define PIN_PWM_L1_REAR 9
+  #define PIN_PWM_L2_REAR 12
+  #define PIN_PWM_R1_REAR 44
+  #define PIN_PWM_R2_REAR 46
+  #define PIN_SPEED_L 2//左轮测速
+  #define PIN_SPEED_R 3//右轮测速
   #define PIN_VIN A8//测电压
   #define PIN_TRIGGER 29//测距离
   #define PIN_ECHO 28//测距离
@@ -115,15 +121,15 @@
 // INITIALIZATION
 //------------------------------------------------------//
 
-#include <limits.h>
-const unsigned int STOP_THRESHOLD = 32; //cm
-
+#include <limits.h>//头文件决定了各种变量类型的各种属性。
+const unsigned int STOP_THRESHOLD = 32; //单位cm 停止距离阈值
+const unsigned int SPEED_THRESHOLD = 128; //单位cm 最大速度阈值 新添加
 #if NO_PHONE_MODE
   int turn_direction = 0; // right
   const unsigned long TURN_DIRECTION_INTERVAL = 2000; // How frequently to change turn direction (ms).
   unsigned long turn_direction_timeout = 0;   // After timeout (ms), random turn direction is updated.
 #endif
-
+//加载跳变沿终端库
 #if HAS_SPEED_SENSORS or HAS_SONAR
   #include <PinChangeInterrupt.h>
 #endif
@@ -155,7 +161,7 @@ const unsigned int STOP_THRESHOLD = 32; //cm
   const int OLED_RESET = -1; // not used
   Adafruit_SSD1306 display(OLED_RESET);
   
-  // OLED Display SSD1306
+  // OLED Display SSD1306 IIC OLED
   const unsigned int SCREEN_WIDTH = 128; // OLED display width, in pixels
   const unsigned int SCREEN_HEIGHT = 32; // OLED display height, in pixels
 #endif
@@ -206,6 +212,10 @@ void setup()
   pinMode(PIN_PWM_L2,OUTPUT);
   pinMode(PIN_PWM_R1,OUTPUT);
   pinMode(PIN_PWM_R2,OUTPUT);
+  pinMode(PIN_PWM_L1_REAR,OUTPUT);
+  pinMode(PIN_PWM_L2_REAR,OUTPUT);
+  pinMode(PIN_PWM_R1_REAR,OUTPUT);
+  pinMode(PIN_PWM_R2_REAR,OUTPUT);
   pinMode(PIN_LED_LB,OUTPUT);
   pinMode(PIN_LED_RB,OUTPUT);
 
@@ -307,10 +317,10 @@ void loop() {
       ctrl_left = distance_estimate;
       ctrl_right = ctrl_left - 3*STOP_THRESHOLD;
     }
-    // turn strongly
+    // turn strongly 修改为128
     else if (distance_estimate > STOP_THRESHOLD) {
-      ctrl_left = 192;
-      ctrl_right = - 192;
+      ctrl_left = 128;
+      ctrl_right = - 128;
     }
     // drive backward slowly
     else {
@@ -334,8 +344,8 @@ void loop() {
       }
     }
     // enforce limits
-    ctrl_left = ctrl_left > 0 ? max(64, min(ctrl_left, 192)) : min(-64, max(ctrl_left, -192));
-    ctrl_right = ctrl_right > 0 ? max(64, min(ctrl_right, 192)) : min(-64, max(ctrl_right, -192));
+    ctrl_left = ctrl_left > 0 ? max(64, min(ctrl_left, SPEED_THRESHOLD)) : min(-64, max(ctrl_left, -SPEED_THRESHOLD));
+    ctrl_right = ctrl_right > 0 ? max(64, min(ctrl_right, SPEED_THRESHOLD)) : min(-64, max(ctrl_right, -SPEED_THRESHOLD));
 
   #else // Wait for messages from the phone
     if (Serial.available() > 0) {
@@ -360,14 +370,23 @@ void update_left_motors() {
     if (ctrl_left < 0) {
       analogWrite(PIN_PWM_L1,-ctrl_left);
       analogWrite(PIN_PWM_L2,0);
+      //添加后轮电机控制
+      analogWrite(PIN_PWM_L1_REAR,-ctrl_left);
+      analogWrite(PIN_PWM_L2_REAR,0);
     }
     else if (ctrl_left > 0) {
       analogWrite(PIN_PWM_L1,0);
       analogWrite(PIN_PWM_L2,ctrl_left);
+      //添加后轮电机控制
+       analogWrite(PIN_PWM_L1_REAR,0);
+      analogWrite(PIN_PWM_L2_REAR,ctrl_left);
     }
     else { //Motor brake
       analogWrite(PIN_PWM_L1,255);
       analogWrite(PIN_PWM_L2,255);
+      //添加后轮电机控制
+      analogWrite(PIN_PWM_L1_REAR,255);
+      analogWrite(PIN_PWM_L2_REAR,255);
     }
 }
 
@@ -375,14 +394,23 @@ void update_right_motors() {
     if (ctrl_right < 0) {
       analogWrite(PIN_PWM_R1,-ctrl_right);
       analogWrite(PIN_PWM_R2,0);
+      //添加后轮电机控制
+      analogWrite(PIN_PWM_R1_REAR,-ctrl_right);
+      analogWrite(PIN_PWM_R2_REAR,0);
     }
     else if (ctrl_right > 0) {
       analogWrite(PIN_PWM_R1,0);
       analogWrite(PIN_PWM_R2,ctrl_right);
+      //添加后轮电机控制
+      analogWrite(PIN_PWM_R1_REAR,0);
+      analogWrite(PIN_PWM_R2_REAR,ctrl_right);
     }
     else { //Motor brake
       analogWrite(PIN_PWM_R1,255);
       analogWrite(PIN_PWM_R2,255);
+      //添加后轮电机控制
+      analogWrite(PIN_PWM_R1_REAR,255);
+      analogWrite(PIN_PWM_R2_REAR,255);
     }
 }
 
